@@ -116,9 +116,17 @@
 					nestedGroup.name = parentName ? `${parentName} > ${item.name}` : item.name;
 					item.modifications?.forEach(mod => {
 						if (mod.type === "position") {
-							nestedGroup.position.set(mod.x, mod.y, mod.z);
+							nestedGroup.position.set(
+								nestedGroup.position.x + mod.x,
+								nestedGroup.position.y + mod.y,
+								nestedGroup.position.z + mod.z
+							);
 						} else if (mod.type === "rotation") {
-							nestedGroup.rotation.set(mod.x, mod.y, mod.z);
+							nestedGroup.rotation.set(
+								nestedGroup.rotation.x + mod.x,
+								nestedGroup.rotation.y + mod.y,
+								nestedGroup.rotation.z + mod.z
+							);
 						}
 					});
 					processConfig(item.elements, nestedGroup, nestedGroup.name);
@@ -147,9 +155,17 @@
 					mesh.name = parentName ? `${parentName} > ${item.name}` : item.name;
 					item.modifications.forEach(mod => {
 						if (mod.type === "position") {
-							mesh.position.set(mod.x, mod.y, mod.z);
+							mesh.position.set(
+								mesh.position.x + mod.x,
+								mesh.position.y + mod.y,
+								mesh.position.z + mod.z
+							);
 						} else if (mod.type === "rotation") {
-							mesh.rotation.set(mod.x, mod.y, mod.z);
+							mesh.rotation.set(
+								mesh.rotation.x + mod.x,
+								mesh.rotation.y + mod.y,
+								mesh.rotation.z + mod.z
+							);
 						}
 					});
 					group.add(mesh);

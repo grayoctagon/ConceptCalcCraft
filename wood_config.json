@@ -11,7 +11,7 @@
 				"depth": 1,
 				"color": "#aa5522",
 				"modifications": [
-					{ "type": "position", "x": 3, "y": 1, "z": -1 },
+					{ "type": "position", "x": 0, "y": 0, "z": 0 },
 					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
 				]
 			},
@@ -27,7 +27,7 @@
 						"depth": 0.6,
 						"color": null,
 						"modifications": [
-							{ "type": "position", "x": 0, "y": 0, "z": 0 },
+							{ "type": "position", "x": 3, "y": 1, "z": -1 },
 							{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
 						]
 					}
