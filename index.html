@@ -18,18 +18,29 @@
 			font-family: arial, sans-serif;
 		}
 		a {
-			color: white;
-			text-decoration: none;
+			color: gray;
 		}
 		.footer {
+			color: gray;
 			position: fixed;
 			bottom: 10px;
 			width: 100%;
 			text-align: center;
 		}
+		#tooltip {
+			position: absolute;
+			background: rgba(0, 0, 0, 0.7);
+			color: white;
+			padding: 5px;
+			border-radius: 3px;
+			display: none;
+			pointer-events: none;
+			font-size: 12px;
+		}
 	</style>
 </head>
 <body>
+	<div id="tooltip"></div>
 	<script type="module">
 		import * as THREE from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -40,6 +51,10 @@
 		const renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
+
+		const tooltip = document.getElementById('tooltip');
+		const raycaster = new THREE.Raycaster();
+		const mouse = new THREE.Vector2();
 
 		// OrbitControls for user interaction
 		const controls = new OrbitControls(camera, renderer.domElement);
@@ -87,45 +102,80 @@
 		fetch('wood_config.json')
 			.then(response => response.json())
 			.then(config => {
-				config.forEach(plate => createWoodPlate(plate));
+				processConfig(config);
 				animate();
 			})
 			.catch(err => console.error('Error loading JSON:', err));
 
-		// Function to create a wood plate
-		function createWoodPlate(config) {
-			const { width, height, depth, color, position, rotation } = config;
-			
-			// Create geometry and material
-			const geometry = new THREE.BoxGeometry(width, height, depth);
-			
-			// Adjust texture scaling based on box dimensions
-			const materials = [
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null })
-			];
-			
-			materials[0].map.repeat.set(depth / width, height / width);
-			materials[1].map.repeat.set(depth / width, height / width);
-			materials[2].map.repeat.set(width / depth, height / depth);
-			materials[3].map.repeat.set(width / depth, height / depth);
-			materials[4].map.repeat.set(width / depth, depth / height);
-			materials[5].map.repeat.set(width / depth, depth / height);
-
-			// Create mesh
-			const plate = new THREE.Mesh(geometry, materials);
-
-			// Set position and rotation
-			plate.position.set(position.x, position.y, position.z);
-			plate.rotation.set(rotation.x, rotation.y, rotation.z);
-
-			// Add to scene
-			scene.add(plate);
+		// Function to process the configuration
+		function processConfig(config, parentGroup = null, parentName = "") {
+			const group = parentGroup || new THREE.Group();
+			config.forEach(item => {
+				if (item.type === "group") {
+					const nestedGroup = new THREE.Group();
+					nestedGroup.name = parentName ? `${parentName} > ${item.name}` : item.name;
+					item.modifications?.forEach(mod => {
+						if (mod.type === "position") {
+							nestedGroup.position.set(mod.x, mod.y, mod.z);
+						} else if (mod.type === "rotation") {
+							nestedGroup.rotation.set(mod.x, mod.y, mod.z);
+						}
+					});
+					processConfig(item.elements, nestedGroup, nestedGroup.name);
+					group.add(nestedGroup);
+				} else if (item.type === "box") {
+					const geometry = new THREE.BoxGeometry(item.width, item.height, item.depth);
+					// Adjust texture scaling based on box dimensions
+					const materials = [
+						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null })
+					];
+					
+					let multiplier=0.8;
+					materials[0].map.repeat.set(multiplier*item.depth, multiplier*item.height*2);//right
+					materials[1].map.repeat.set(multiplier*item.depth, multiplier*item.height*2);//left
+					materials[2].map.repeat.set(multiplier*item.width, multiplier*item.depth*2);//top
+					materials[3].map.repeat.set(multiplier*item.width, multiplier*item.depth*2);//bottom
+					materials[4].map.repeat.set(multiplier*item.width, multiplier*item.height*2);//front
+					materials[5].map.repeat.set(multiplier*item.width, multiplier*item.height*2);//back
+					
+					const mesh = new THREE.Mesh(geometry, materials);
+					mesh.name = parentName ? `${parentName} > ${item.name}` : item.name;
+					item.modifications.forEach(mod => {
+						if (mod.type === "position") {
+							mesh.position.set(mod.x, mod.y, mod.z);
+						} else if (mod.type === "rotation") {
+							mesh.rotation.set(mod.x, mod.y, mod.z);
+						}
+					});
+					group.add(mesh);
+				}
+			});
+			if (!parentGroup) {
+				scene.add(group);
+			}
 		}
+
+		// Handle mouse move
+		document.addEventListener('mousemove', event => {
+			mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+			raycaster.setFromCamera(mouse, camera);
+			const intersects = raycaster.intersectObjects(scene.children, true);
+			if (intersects.length > 0) {
+				const firstIntersect = intersects[0].object;
+				tooltip.style.display = 'block';
+				tooltip.style.left = `${event.clientX + 10}px`;
+				tooltip.style.top = `${event.clientY + 10}px`;
+				tooltip.textContent = firstIntersect.name;
+			} else {
+				tooltip.style.display = 'none';
+			}
+		});
 
 		// Animation loop
 		function animate() {
@@ -146,7 +196,10 @@
 		});
 	</script>
 	<div class="footer">
-		<a href="https://github.com/grayoctagon/ConceptCalcCraft" target="_blank">Repository: ConceptCalcCraft</a>
+		This Application 
+		<a href="https://github.com/grayoctagon/ConceptCalcCraft" target="_blank">(ConceptCalcCraft)</a>
+		 is made with 
+		<a href="https://threejs.org/" target="_blank">three.js</a>
 	</div>
 </body>
 </html>
