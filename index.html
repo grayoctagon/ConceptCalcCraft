@@ -6,15 +6,15 @@
 	<title>Three.js Wood Plates</title>
 	<script type="importmap">
 		{
-		  "imports": {
-			  "three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
-			  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
-		  }
+			"imports": {
+				"three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
+				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+			}
 		}
 	</script>
 	<style>
-		body{
-			margin:0px;
+		body {
+			margin: 0px;
 			font-family: arial, sans-serif;
 		}
 	</style>
@@ -33,6 +33,29 @@
 
 		// OrbitControls for user interaction
 		const controls = new OrbitControls(camera, renderer.domElement);
+
+		// Save camera position in localStorage on change
+		controls.addEventListener('change', () => {
+			const cameraPosition = {
+				x: camera.position.x,
+				y: camera.position.y,
+				z: camera.position.z
+			};
+			localStorage.setItem('cameraPosition', JSON.stringify(cameraPosition));
+			console.log("saved cam pos");
+		});
+
+		// Restore camera position from localStorage on load
+		const savedCameraPosition = JSON.parse(localStorage.getItem('cameraPosition'));
+		if (savedCameraPosition) {
+			camera.position.set(
+				savedCameraPosition.x,
+				savedCameraPosition.y,
+				savedCameraPosition.z
+			);
+		} else {
+			camera.position.z = 10;
+		}
 
 		// Lighting
 		const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -62,28 +85,26 @@
 		// Function to create a wood plate
 		function createWoodPlate(config) {
 			const { width, height, depth, color, position, rotation } = config;
-			console.log("createWoodPlate",config);
-
+			
 			// Create geometry and material
 			const geometry = new THREE.BoxGeometry(width, height, depth);
 			
-
 			// Adjust texture scaling based on box dimensions
 			const materials = [
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide ,color: color ? new THREE.Color(color) : null}),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide ,color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide ,color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide ,color: color ? new THREE.Color(color) : null}),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide ,color: color ? new THREE.Color(color) : null }),
-				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide ,color: color ? new THREE.Color(color) : null })
+				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
+				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
+				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
+				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
+				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null }),
+				new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: color ? new THREE.Color(color) : null })
 			];
-			let multiplier=0.8;
-			materials[0].map.repeat.set(multiplier*depth, multiplier*height*2);//right
-			materials[1].map.repeat.set(multiplier*depth, multiplier*height*2);//left
-			materials[2].map.repeat.set(multiplier*width, multiplier*depth*2);//top
-			materials[3].map.repeat.set(multiplier*width, multiplier*depth*2);//bottom
-			materials[4].map.repeat.set(multiplier*width, multiplier*height*2);//front
-			materials[5].map.repeat.set(multiplier*width, multiplier*height*2);//back
+			
+			materials[0].map.repeat.set(depth / width, height / width);
+			materials[1].map.repeat.set(depth / width, height / width);
+			materials[2].map.repeat.set(width / depth, height / depth);
+			materials[3].map.repeat.set(width / depth, height / depth);
+			materials[4].map.repeat.set(width / depth, depth / height);
+			materials[5].map.repeat.set(width / depth, depth / height);
 
 			// Create mesh
 			const plate = new THREE.Mesh(geometry, materials);
@@ -103,19 +124,14 @@
 			renderer.render(scene, camera);
 		}
 
-		// Initial camera position
-		camera.position.z = 10;
-		
 		function onWindowResize() {
-
 			camera.aspect = window.innerWidth / window.innerHeight;
 			camera.updateProjectionMatrix();
-
-			renderer.setSize( window.innerWidth, window.innerHeight );
-
+			renderer.setSize(window.innerWidth, window.innerHeight);
 		}
+
 		addEventListener("load", (event) => {
-			window.addEventListener( 'resize', onWindowResize, false );
+			window.addEventListener('resize', onWindowResize, false);
 			onWindowResize();
 		});
 	</script>
