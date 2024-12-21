@@ -16,6 +16,37 @@
 		body {
 			margin: 0px;
 			font-family: arial, sans-serif;
+			overflow: hidden;
+		}
+		#hierarchy {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 300px;
+			background: #f0f0f0;
+			overflow-y: auto;
+			padding: 10px;
+			box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+			max-height: 95%;
+		}
+		.myGroupEl{
+			border: 1px solid black;
+			margin-bottom: 5px;
+			padding: 0 4px 4px;
+		}
+		.myBoxEl{
+			border: 1px solid black;
+			margin-bottom: 2px;
+			padding: 0 4px 4px;
+		}
+		.myGroupTitle{
+			background: rgb(0 65 255 / 31%);
+		}
+		.numberinput{
+			width: 45px;
+		}
+		.inputlabel{
+			font-size: 80%;
 		}
 		a {
 			color: gray;
@@ -37,9 +68,34 @@
 			pointer-events: none;
 			font-size: 12px;
 		}
+		input {
+			margin: 3px 0;
+		}
+		.crossed {
+			position: relative;
+			display: inline-block;
+		}
+		.crossed::before, .crossed::after {
+			content: '';
+			width: 100%;
+			position: absolute;
+			right: 0;
+			top: 50%;
+		}
+		.crossed::before {
+			border-bottom: 2px solid red;
+			-webkit-transform: skewY(-20deg);
+			transform: skewY(-20deg);
+		}
+		.crossed::after {
+			border-bottom: 2px solid red;
+			-webkit-transform: skewY(20deg);
+			transform: skewY(20deg);
+		}
 	</style>
 </head>
 <body>
+	<div id="hierarchy"></div>
 	<div id="tooltip"></div>
 	<script type="module">
 		import * as THREE from 'three';
@@ -52,6 +108,8 @@
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
 
+		const hierarchyDiv = document.getElementById('hierarchy');
+		let showHierarchy=true;
 		const tooltip = document.getElementById('tooltip');
 		const raycaster = new THREE.Raycaster();
 		const mouse = new THREE.Vector2();
@@ -67,7 +125,7 @@
 				z: camera.position.z
 			};
 			localStorage.setItem('cameraPosition', JSON.stringify(cameraPosition));
-			console.log("saved cam pos");
+			//console.log("saved cam pos ",cameraPosition);
 		});
 
 		// Restore camera position from localStorage on load
@@ -78,6 +136,7 @@
 				savedCameraPosition.y,
 				savedCameraPosition.z
 			);
+			console.log("loaded cam pos ",savedCameraPosition);
 		} else {
 			camera.position.z = 10;
 		}
@@ -98,82 +157,97 @@
 		woodTexture.wrapS = THREE.RepeatWrapping;
 		woodTexture.wrapT = THREE.RepeatWrapping;
 
+		let config = [];
+		let isAnimating = false;
+		function loadConfig(newConfig) {
+			config = newConfig;
+			window.config=config;
+			//clearSceneExceptLights(scene);
+			
+			processConfig(config, scene);
+			if (!isAnimating) {
+				isAnimating = true;
+				animate();
+			}
+		}
+		function clearSceneExceptLights(scene) {
+			console.log("clearSceneExceptLights");
+			for (let i = scene.children.length - 1; i >= 0; i--) {
+				const child = scene.children[i];
+				// Remove objects that are groups or meshes
+				if (child.isGroup || child.isMesh) {
+					scene.remove(child);
+				}
+			}
+		}
+
 		// Load JSON configuration file
 		fetch('wood_config.json')
 			.then(response => response.json())
 			.then(config => {
-				processConfig(config);
-				animate();
+				loadConfig(config);
+				updateHierarchy();
 			})
 			.catch(err => console.error('Error loading JSON:', err));
 
-		// Function to process the configuration
-		function processConfig(config, parentGroup = null, parentName = "") {
-			const group = parentGroup || new THREE.Group();
+		function processConfig(config, parent) {
+			console.log("processConfig");
 			config.forEach(item => {
-				if (item.type === "group") {
-					const nestedGroup = new THREE.Group();
-					nestedGroup.name = parentName ? `${parentName} > ${item.name}` : item.name;
-					item.modifications?.forEach(mod => {
-						if (mod.type === "position") {
-							nestedGroup.position.set(
-								nestedGroup.position.x + mod.x,
-								nestedGroup.position.y + mod.y,
-								nestedGroup.position.z + mod.z
-							);
-						} else if (mod.type === "rotation") {
-							nestedGroup.rotation.set(
-								nestedGroup.rotation.x + mod.x,
-								nestedGroup.rotation.y + mod.y,
-								nestedGroup.rotation.z + mod.z
-							);
-						}
-					});
-					processConfig(item.elements, nestedGroup, nestedGroup.name);
-					group.add(nestedGroup);
-				} else if (item.type === "box") {
-					const geometry = new THREE.BoxGeometry(item.width, item.height, item.depth);
-					// Adjust texture scaling based on box dimensions
-					const materials = [
-						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
-						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
-						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
-						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
-						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
-						new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null })
-					];
-					
-					let multiplier=0.8;
-					materials[0].map.repeat.set(multiplier*item.depth, multiplier*item.height*2);//right
-					materials[1].map.repeat.set(multiplier*item.depth, multiplier*item.height*2);//left
-					materials[2].map.repeat.set(multiplier*item.width, multiplier*item.depth*2);//top
-					materials[3].map.repeat.set(multiplier*item.width, multiplier*item.depth*2);//bottom
-					materials[4].map.repeat.set(multiplier*item.width, multiplier*item.height*2);//front
-					materials[5].map.repeat.set(multiplier*item.width, multiplier*item.height*2);//back
-					
-					const mesh = new THREE.Mesh(geometry, materials);
-					mesh.name = parentName ? `${parentName} > ${item.name}` : item.name;
-					item.modifications.forEach(mod => {
-						if (mod.type === "position") {
-							mesh.position.set(
-								mesh.position.x + mod.x,
-								mesh.position.y + mod.y,
-								mesh.position.z + mod.z
-							);
-						} else if (mod.type === "rotation") {
-							mesh.rotation.set(
-								mesh.rotation.x + mod.x,
-								mesh.rotation.y + mod.y,
-								mesh.rotation.z + mod.z
-							);
-						}
-					});
-					group.add(mesh);
+				createObject(item, parent);
+			});
+		}
+		function createObject(item, parent){
+			let object =null;
+			if(item.hide){
+				return;
+			}
+			if (item.type === "box"){
+				const geometry = new THREE.BoxGeometry(item.width, item.height, item.depth);
+				const materials = [
+					new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+					new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+					new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+					new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+					new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null }),
+					new THREE.MeshStandardMaterial({ map: woodTexture.clone(), side: THREE.DoubleSide, color: item.color ? new THREE.Color(item.color) : null })
+				];
+				
+				let multiplier=0.8;
+				materials[0].map.repeat.set(multiplier*item.depth, multiplier*item.height*2);//right
+				materials[1].map.repeat.set(multiplier*item.depth, multiplier*item.height*2);//left
+				materials[2].map.repeat.set(multiplier*item.width, multiplier*item.depth*2);//top
+				materials[3].map.repeat.set(multiplier*item.width, multiplier*item.depth*2);//bottom
+				materials[4].map.repeat.set(multiplier*item.width, multiplier*item.height*2);//front
+				materials[5].map.repeat.set(multiplier*item.width, multiplier*item.height*2);//back
+				object = new THREE.Mesh(geometry, materials);
+			}else if (item.type === "group") {
+				object = new THREE.Group();
+			}else{
+				alert("unknown object type "+item.type);
+				console.error("unknown object type "+item.type,item);
+			}
+			object.name = parent.name ? `${parent.name} > ${item.name}` : item.name;
+			
+			item.modifications?.forEach(mod => {
+				if (mod.type === "position") {
+					object.position.set(
+						object.position.x + mod.x,
+						object.position.y + mod.y,
+						object.position.z + mod.z
+					);
+				} else if (mod.type === "rotation") {
+					object.rotation.set(
+						object.rotation.x + mod.x,
+						object.rotation.y + mod.y,
+						object.rotation.z + mod.z
+					);
 				}
 			});
-			if (!parentGroup) {
-				scene.add(group);
+			
+			if (item.type === "group") {
+				processConfig(item.elements, object);
 			}
+			parent.add(object);
 		}
 
 		// Handle mouse move
@@ -194,10 +268,121 @@
 		});
 
 		// Animation loop
-		function animate() {
+		let lastRenderTime = 0;
+		function animate(timestamp) {
+			if (timestamp - lastRenderTime >= 34) {//limit to aaprox 30fps
+				lastRenderTime = timestamp;
+				controls.update();
+				renderer.render(scene, camera);
+			}
 			requestAnimationFrame(animate);
-			controls.update();
-			renderer.render(scene, camera);
+		}
+		
+		function toggleHierarchy(){
+			showHierarchy=!showHierarchy;
+			updateHierarchy();
+		}
+		
+		function updateHierarchy() {
+			console.log("updateHierarchy");
+			hierarchyDiv.innerHTML = `Element Inspector `;
+			
+			const btnToggleHierarchy = document.createElement("button");
+			btnToggleHierarchy.onclick = () => { toggleHierarchy(); };
+			btnToggleHierarchy.innerText=(showHierarchy?"hide":"show");
+			hierarchyDiv.appendChild(btnToggleHierarchy);
+			
+			//hierarchyDiv.style.height=showHierarchy?"100%":"initial";
+			hierarchyDiv.style.width=showHierarchy?"300px":"initial";
+			if(showHierarchy)
+				buildHierarchy(config, hierarchyDiv);
+		}
+		let idCounter=0;
+		function buildHierarchy(config, parentDiv, depth = 0) {
+			config.forEach((item, index) => {
+				const container = document.createElement("div");
+				container.style.marginLeft = `${depth * 20}px`;
+
+				const nameField = document.createElement("input");
+				nameField.value = item.name;
+				nameField.oninput = (e) => { item.name = e.target.value; refreshScene();};
+				container.appendChild(nameField);
+				
+				const hideEl = document.createElement("span");
+				hideEl.innerText="👁";
+				hideEl.onclick = () => {
+					item.hide = !item.hide;
+					if(item.hide){
+						hideEl.classList.add("crossed");
+					}else{
+						hideEl.classList.remove("crossed");
+					}
+					refreshScene();
+				};
+				if(item.hide){
+					hideEl.classList.add("crossed");
+				}else{
+					hideEl.classList.remove("crossed");
+				}
+				container.appendChild(hideEl);
+				
+				if (item.type === "group") {
+					container.classList.add("myGroupEl");
+					nameField.classList.add("myGroupTitle");
+					
+					
+					buildHierarchy(item.elements, container, depth + 1);
+					const addElement = document.createElement("button");
+					addElement.textContent = "Add Element";
+					addElement.onclick = () => { addNewItem(item.elements, "box"); refreshScene(true); }; // Refresh only on new addition
+					container.appendChild(addElement);
+					const addGroup = document.createElement("button");
+					addGroup.textContent = "Add Group";
+					addGroup.onclick = () => { addNewItem(item.elements, "group"); refreshScene(true); }; // Refresh only on new addition
+					container.appendChild(addGroup);
+				}else if(item.type === "box"){
+					container.classList.add("myBoxEl");
+					//►▼
+					
+					//TODO hide show details 
+					
+					const size = document.createElement("div");
+					["width","height","depth"].forEach(sName => {
+						let label=Object.assign(document.createElement("label"),{textContent:sName});
+						label.setAttribute("for",("input"+ (++idCounter)));
+						size.appendChild(label);
+						label.classList.add("inputlabel");
+						
+						const s1 = document.createElement("input");
+						s1.classList.add("numberinput");
+						s1.value = item[sName];
+						s1.id=("input"+ (idCounter));
+						s1.type="number";
+						s1.step="0.005";
+						s1.size="5";
+						s1.oninput = (e) => { item[sName] = e.target.value; refreshScene();};
+						size.appendChild(s1);
+					});
+					//TODO add options for position and rotation
+					
+					container.appendChild(size);
+				}
+				
+				
+				parentDiv.appendChild(container);
+			});
+		}
+
+		function addNewItem(elements, type) {
+			const newItem = { type, name: type === "group" ? "New Group" : "New Box", elements: type === "group" ? [] : null, width: 1, height: 1, depth: 1, position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } };
+			elements.push(newItem);
+		}
+
+		function refreshScene(updateH=false) {
+			loadConfig(config);
+			if(updateH){
+				updateHierarchy();
+			}
 		}
 
 		function onWindowResize() {

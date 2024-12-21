@@ -31,6 +31,7 @@ While developing this application, I made extensive use of ChatGPT to assist wit
 ## Screenshots
 
 ![Screenshot of Two Cubes with Different Colors](assetsForGit/ScreenshotTwoCubesWithDifferentColor.PNG)
+![Screenshot of Chair and HTML Detail view](assetsForGit/2024-12-21_ScreenshotChair.PNG)
 
 ## License: 
 Attribution-ShareAlike 4.0 International CC-BY-SA 
