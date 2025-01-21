@@ -1,36 +1,99 @@
 [
 	{
 		"type": "group",
-		"name": "mainGroup",
+		"name": "Sessel",
+		"modifications": [
+			{ "type": "position", "x": 0, "y": 0, "z":-0.5 }
+		],
 		"elements": [
 			{
 				"type": "box",
-				"name": "symetric Box",
-				"width": 1,
-				"height": 1,
-				"depth": 1,
+				"name": "Sessel bein1",
+				"width": 0.04,
+				"height": 0.44,
+				"depth": 0.04,
 				"color": "#aa5522",
 				"modifications": [
-					{ "type": "position", "x": 0, "y": 0, "z": 0 },
+					{ "type": "position", "x": 0.225, "y": 0.22, "z": -0.225 },
 					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
 				]
 			},
 			{
-				"type": "group",
-				"name": "nested Group",
-				"elements": [
-					{
-						"type": "box",
-						"name": "asymetric Box",
-						"width": 0.6,
-						"height": 1.5,
-						"depth": 0.6,
-						"color": null,
-						"modifications": [
-							{ "type": "position", "x": 3, "y": 1, "z": -1 },
-							{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
-						]
-					}
+				"type": "box",
+				"name": "Sessel bein2",
+				"width": 0.04,
+				"height": 0.44,
+				"depth": 0.04,
+				"color": "#aa5522",
+				"modifications": [
+					{ "type": "position", "x": 0.225, "y": 0.22, "z": 0.225 },
+					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
+				]
+			},
+			{
+				"type": "box",
+				"name": "Sessel bein3",
+				"width": 0.04,
+				"height": 0.44,
+				"depth": 0.04,
+				"color": "#aa5522",
+				"modifications": [
+					{ "type": "position", "x": -0.225, "y": 0.22, "z": -0.225 },
+					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
+				]
+			},
+			{
+				"type": "box",
+				"name": "Sessel bein4",
+				"width": 0.04,
+				"height": 0.44,
+				"depth": 0.04,
+				"color": "#aa5522",
+				"modifications": [
+					{ "type": "position", "x": -0.225, "y": 0.22, "z": 0.225 },
+					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
+				]
+			},
+			{
+				"type": "box",
+				"name": "Sessel sitzflaeche",
+				"width": 0.5,
+				"height": 0.02,
+				"depth": 0.5,
+				"color": "#aa5522",
+				"modifications": [
+					{ "type": "position", "x": 0, "y": 0.45, "z": 0 },
+					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
+				]
+			},
+			{
+				"type": "box",
+				"name": "Sessel Lehne",
+				"width": 0.5,
+				"height": 0.5,
+				"depth": 0.02,
+				"color": "#aa5522",
+				"modifications": [
+					{ "type": "position", "x": 0, "y": 0.7, "z": -0.29 },
+					{ "type": "rotation", "x": -0.2, "y": 0, "z": 0 }
+				]
+			}
+		]
+	},
+	{
+		"type": "group",
+		"name": "Buehnenboden",
+		"elements": [
+			{
+				"type": "box",
+				"name": "Buehnenboden top",
+				"width": 6,
+				"height": 0.01,
+				"depth": 4,
+				"color": "#563228",
+				"modifications": [
+					{ "type": "position", "x": 0, "y": 0, "z": -0.005 },
+					{ "type": "rotation", "x": 0, "y": 0, "z": 0 }
 				]
 			}
 		]

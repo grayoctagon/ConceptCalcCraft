@@ -22,12 +22,25 @@
 			position: absolute;
 			top: 0;
 			left: 0;
-			width: 300px;
 			background: #f0f0f0;
 			overflow-y: auto;
 			padding: 10px;
 			box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
 			max-height: 95%;
+		}
+		.tabEl{
+			border: 1px solid black;
+			border-bottom-width: 0px;
+			border-radius: 4px 4px 0 0;
+			margin: 3px;
+			padding: 2px;
+		}
+		.activeTabEl{
+			background-color: antiquewhite;
+		}
+		#inexport{
+			width: 300px;
+			height: 400px;
 		}
 		.myGroupEl{
 			border: 1px solid black;
@@ -109,7 +122,6 @@
 		document.body.appendChild(renderer.domElement);
 
 		const hierarchyDiv = document.getElementById('hierarchy');
-		let showHierarchy=true;
 		const tooltip = document.getElementById('tooltip');
 		const raycaster = new THREE.Raycaster();
 		const mouse = new THREE.Vector2();
@@ -162,7 +174,7 @@
 		function loadConfig(newConfig) {
 			config = newConfig;
 			window.config=config;
-			//clearSceneExceptLights(scene);
+			clearSceneExceptLights(scene);
 			
 			processConfig(config, scene);
 			if (!isAnimating) {
@@ -192,6 +204,7 @@
 
 		function processConfig(config, parent) {
 			console.log("processConfig");
+			
 			config.forEach(item => {
 				createObject(item, parent);
 			});
@@ -278,24 +291,43 @@
 			requestAnimationFrame(animate);
 		}
 		
-		function toggleHierarchy(){
-			showHierarchy=!showHierarchy;
+		let tabs=["Inspector","import/export"];
+		let currentTab=tabs[0];
+		function toggleToTab(switchToTab){
+			if(currentTab==switchToTab){
+				currentTab=false;
+			}else{
+				currentTab=switchToTab;
+			}
 			updateHierarchy();
 		}
 		
 		function updateHierarchy() {
 			console.log("updateHierarchy");
-			hierarchyDiv.innerHTML = `Element Inspector `;
+			hierarchyDiv.innerHTML = ``;
 			
-			const btnToggleHierarchy = document.createElement("button");
-			btnToggleHierarchy.onclick = () => { toggleHierarchy(); };
-			btnToggleHierarchy.innerText=(showHierarchy?"hide":"show");
-			hierarchyDiv.appendChild(btnToggleHierarchy);
+			tabs.forEach(tabName=>{
+				const elInspector = document.createElement("span");
+				elInspector.innerText=tabName;
+				elInspector.classList.add("tabEl");
+				if(currentTab==tabName)
+					elInspector.classList.add("activeTabEl");
+				elInspector.onclick = () => {
+					toggleToTab(tabName);
+				};
+				hierarchyDiv.appendChild(elInspector);
+			});
 			
-			//hierarchyDiv.style.height=showHierarchy?"100%":"initial";
-			hierarchyDiv.style.width=showHierarchy?"300px":"initial";
-			if(showHierarchy)
+			
+			
+			hierarchyDiv.style.width=(currentTab=="Inspector")?"300px":"initial";
+			
+			//hierarchyDiv.style.height=currentTab?"100%":"initial";
+			if(currentTab=="Inspector"){
 				buildHierarchy(config, hierarchyDiv);
+			}
+			if(currentTab=="import/export")
+				buildImportExport(hierarchyDiv);
 		}
 		let idCounter=0;
 		function buildHierarchy(config, parentDiv, depth = 0) {
@@ -371,6 +403,77 @@
 				
 				parentDiv.appendChild(container);
 			});
+		}
+		
+		function buildImportExport(hierarchyDiv){
+			hierarchyDiv.appendChild(document.createElement("br"));
+			
+			
+			let inexp=document.createElement("textarea");
+			inexp.id="inexport";
+			inexp.value=JSON.stringify(config, null,"  ");
+			
+			let importToWorldNow=document.createElement("button");
+			importToWorldNow.textContent = "import now";
+			importToWorldNow.onclick = () => { importTextData(inexp.value,inexp) };
+			hierarchyDiv.appendChild(importToWorldNow);
+			
+			let importAutoBox=document.createElement("input");
+			importAutoBox.title = "import now";
+			importAutoBox.type = "checkbox";
+			importAutoBox.id = "importAutoBox";
+			hierarchyDiv.appendChild(importAutoBox);
+			
+			let importAutoLabel=document.createElement("label");
+			importAutoLabel.htmlFor = "importAutoBox";
+			importAutoLabel.textContent = "auto import ";
+			hierarchyDiv.appendChild(importAutoLabel);
+			
+			let download=document.createElement("button");
+			download.textContent = "download";
+			download.onclick = () => { downloadJson(inexp.value) };
+			hierarchyDiv.appendChild(download);
+			
+			hierarchyDiv.appendChild(document.createElement("br"));
+			
+			inexp.oninput = (e) => { if(importAutoBox.checked)importTextData(inexp.value,inexp) };
+			hierarchyDiv.appendChild(inexp);
+			
+		}
+		
+		function importTextData(text,statusfield){
+			console.log("importTextData");
+			statusfield.style.transition="background-color 0ms linear";
+			try {
+				let result=JSON.parse(text);
+				config=result;
+				statusfield.style.backgroundColor="#9dffc3";
+				refreshScene();
+			} catch (e) {
+				statusfield.style.backgroundColor="#ffaeae";
+			}
+			statusfield.offsetHeight;
+			statusfield.style.transition="background-color 1000ms linear";
+			statusfield.style.backgroundColor="initial";
+		}
+		
+		function downloadJson(text){
+			const link = document.createElement('a');
+			link.download = 'export'+timeStamp()+'.json';
+			link.href = window.URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+			document.body.appendChild(link);
+			link.click();
+		}
+		
+		function timeStamp(){
+			const now = new Date();
+			const year = now.getFullYear();
+			const month = String(now.getMonth() + 1).padStart(2, '0');
+			const day = String(now.getDate()).padStart(2, '0');
+			const hours = String(now.getHours()).padStart(2, '0');
+			const minutes = String(now.getMinutes()).padStart(2, '0');
+
+			return `export_${year}-${month}-${day}_${hours}-${minutes}`;
 		}
 
 		function addNewItem(elements, type) {
