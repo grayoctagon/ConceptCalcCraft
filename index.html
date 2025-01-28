@@ -8,7 +8,8 @@
 		{
 			"imports": {
 				"three": "https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
-				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+				"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/",
+				"three/addons/exporters/": "https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/exporters/"
 			}
 		}
 	</script>
@@ -113,6 +114,19 @@
 	<script type="module">
 		import * as THREE from 'three';
 		import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+		import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';//https://github.com/mrdoob/three.js/blob/master/examples/misc_exporter_gltf.html
+		import * as TextureUtils from 'three/addons/utils/WebGLTextureUtils.js';
+		import { STLExporter } from 'three/addons/exporters/STLExporter.js';
+		import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';//https://github.com/mrdoob/three.js/blob/master/examples/misc_exporter_stl.html
+		import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';//https://github.com/mrdoob/three.js/blob/master/examples/misc_exporter_obj.html
+		
+		
+		const params = {
+				trs: false,
+				onlyVisible: true,
+				binary: false,
+				maxTextureSize: 4096
+			};
 		
 		// Scene setup
 		const scene = new THREE.Scene();
@@ -429,10 +443,21 @@
 			importAutoLabel.textContent = "auto import ";
 			hierarchyDiv.appendChild(importAutoLabel);
 			
-			let download=document.createElement("button");
-			download.textContent = "download";
-			download.onclick = () => { downloadJson(inexp.value) };
-			hierarchyDiv.appendChild(download);
+			hierarchyDiv.appendChild(document.createElement("br"));
+			hierarchyDiv.appendChild(document.createTextNode('download: '));
+			
+			let downloads=[
+				["Json",() => { downloadJson(inexp.value) }],
+				["gltf",() => { downloadGLTF(scene) }],
+				["obj",() => { exportToObj(scene) }],
+				["stl",() => { downloadSTL() }]
+			];
+			downloads.forEach(el => {
+				let downloadBtn=document.createElement("button");
+				downloadBtn.textContent = el[0];
+				downloadBtn.onclick = el[1];
+				hierarchyDiv.appendChild(downloadBtn);
+			});
 			
 			hierarchyDiv.appendChild(document.createElement("br"));
 			
@@ -455,6 +480,122 @@
 			statusfield.offsetHeight;
 			statusfield.style.transition="background-color 1000ms linear";
 			statusfield.style.backgroundColor="initial";
+		}
+		
+		function downloadGLTF( input ) {
+			const gltfExporter = new GLTFExporter().setTextureUtils( TextureUtils );
+
+			const options = {
+				trs: params.trs,
+				onlyVisible: params.onlyVisible,
+				binary: params.binary,
+				maxTextureSize: params.maxTextureSize
+			};
+			gltfExporter.parse(
+				input,
+				function ( result ) {
+
+					if ( result instanceof ArrayBuffer ) {
+
+						saveArrayBuffer( result, 'scene.glb' );
+
+					} else {
+
+						const output = JSON.stringify( result, null, 2 );
+						console.log( output );
+						saveString( output, 'scene.gltf' );
+
+					}
+
+				},
+				function ( error ) {
+
+					console.log( 'An error happened during parsing', error );
+
+				},
+				options
+			);
+
+		}
+		
+		
+		function exportToObj() {
+			const exporter = new OBJExporter();
+			const result = exporter.parse( scene );
+			saveString( result, 'scene.obj' );
+		}
+		
+		function downloadSTL() {
+			let stlexporter = new STLExporter();
+			const result = stlexporter.parse( combineSceneToMesh(scene));//, { binary: true } );
+			saveArrayBuffer( result, 'scene.stl' );
+		}
+
+		function combineSceneToMesh(scene) {
+			const geometriesWithMaterials = [];
+			// Traverse the scene and collect geometries and their respective materials
+			scene.traverse((object) => {
+				if (object.isMesh && object.geometry) {
+					const geometry = object.geometry.clone();
+					geometry.applyMatrix4(object.matrixWorld); // Apply object's world transformation
+
+					// Check if material is an array (MultiMaterial) or a single material
+					let material;
+					if (Array.isArray(object.material)) {
+						// Clone each material in the array
+						material = object.material.map((mat) => mat.clone());
+					} else if (object.material) {
+						// Clone single material
+						material = object.material.clone();
+					}
+
+					geometriesWithMaterials.push({
+						geometry,
+						material,
+					});
+				}
+			});
+
+			// If only one material is used, merge all geometries into one mesh
+			if (geometriesWithMaterials.length > 0) {
+				const uniqueMaterials = new Set(
+					geometriesWithMaterials.map((item) => Array.isArray(item.material) ? item.material.map(m => m.uuid).join() : item.material.uuid)
+				);
+
+				if (uniqueMaterials.size === 1) {
+					const mergedGeometry = BufferGeometryUtils.mergeBufferGeometries(
+						geometriesWithMaterials.map((item) => item.geometry)
+					);
+
+					const material = geometriesWithMaterials[0].material; // Use the first material
+					return new THREE.Mesh(mergedGeometry, material);
+				}
+				// If multiple materials, return a group of meshes
+				const group = new THREE.Group();
+				geometriesWithMaterials.forEach(({ geometry, material }) => {
+					const mesh = new THREE.Mesh(geometry, material);
+					group.add(mesh);
+				});
+				return group; // Return a group of meshes with individual materials
+			}
+			return null; // Return null if no mesh is found
+		}
+
+		
+		function save( blob, mfilename ) {
+			const link = document.createElement( 'a' );
+			link.style.display = 'none';
+			document.body.appendChild( link );
+			link.href = URL.createObjectURL( blob );
+			link.download = mfilename;
+			link.click();
+			// URL.revokeObjectURL( url ); breaks Firefox...
+		}
+		function saveArrayBuffer( buffer, filename ) {
+			save( new Blob( [ buffer ], { type: 'application/octet-stream' } ), filename );
+		}
+		function saveString( text, filename ) {
+			save( new Blob( [ text ], { type: 'text/plain' } ), filename );
 		}
 		
 		function downloadJson(text){
